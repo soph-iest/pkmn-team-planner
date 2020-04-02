@@ -5,6 +5,13 @@ td {
     text-align: center;
 }
 
+th {
+    border-style: solid;
+    border-color: black;
+    border-width: 0px 0px 2px 1px;
+    text-align: center;
+}
+
 .resultsTallySpacer {
     background-color: gray;
     border: none;

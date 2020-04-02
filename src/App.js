@@ -1,5 +1,6 @@
 import React, { Component} from "react";
 import "./index.css";
+import { green } from "ansi-colors";
 
 const EFFECTIVENESS = [ // Attack then defense
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -24,7 +25,7 @@ const EFFECTIVENESS = [ // Attack then defense
 ];
 
 const [NONE, NORMAL, FIRE, WATER, ELECTRIC, GRASS, ICE, FIGHTING, POISON, GROUND,
-    FLYING, PSYCHIC, BUG, ROCK, GHOST, DRAGON, DARK, STEEL, FAIRY] = [...Array(18).keys()];
+    FLYING, PSYCHIC, BUG, ROCK, GHOST, DRAGON, DARK, STEEL, FAIRY] = [...Array(19).keys()];
 
 const TYPES = ['--', 'NORMAL', 'FIRE', 'WATER', 'ELECTRIC', 'GRASS', 'ICE', 'FIGHTING', 'POISON', 'GROUND',
 'FLYING', 'PSYCHIC', 'BUG', 'ROCK', 'GHOST', 'DRAGON', 'DARK', 'STEEL', 'FAIRY'];
@@ -32,8 +33,7 @@ const TYPES = ['--', 'NORMAL', 'FIRE', 'WATER', 'ELECTRIC', 'GRASS', 'ICE', 'FIG
 const RELEVANT_ABILITIES = ['--', 'LEVITATE', 'DRY SKIN', 'WATER ABSORB', 'STORM DRAIN', 'FLASH FIRE', 'LIGHTNINGROD', 'MOTOR DRIVE', 'VOLT ABSORB', 'SAP SIPPER', 'WONDER GUARD'];
 
 const typeSelector = (id) => (
-    <div key={'Pokemon'+id}>
-        <h3>Pokemon {id}</h3>
+    <div>
         <select name={'PokemonA'+id} id={'PokemonA'+id}>
             {TYPES.map((type) =>
             <option value={type} key={type}>
@@ -61,8 +61,8 @@ const abilitySelector = (id) => (
 function analyze () {
     const party = $("form").serializeArray();
     const partyDefenses = [];
-    for(let i = 0; i < party.length; i += 2){
-        const [{value: type1}, {value: type2}] = party.slice(i, i+2);
+    for(let i = 0; i < party.length; i += 4){
+        const [{value: name}, {value: type1}, {value: type2}, {value: ability}] = party.slice(i, i+4);
         if(type1 != '--' || type2 != '--'){
             const pokemonDefenses = [];
             const t1 = type1 == '--' ? NONE : eval(type1);
@@ -71,10 +71,46 @@ function analyze () {
             for(let j = 0; j < EFFECTIVENESS.length; j++){
                 pokemonDefenses.push(EFFECTIVENESS[j][t1] * EFFECTIVENESS[j][t2])
             }
+            switch(ability){
+                case '--': break;
+                case 'LEVITATE': pokemonDefenses[GROUND] = 0; break;
+                case 'DRY SKIN': pokemonDefenses[WATER] = 0; break;
+                case 'WATER ABSORB': pokemonDefenses[WATER] = 0; break;
+                case 'STORM DRAIN': pokemonDefenses[WATER] = 0; break;
+                case 'FLASH FIRE': pokemonDefenses[FIRE] = 0; break;
+                case 'LIGHTNINGROD': pokemonDefenses[ELECTRIC] = 0; break;
+                case 'MOTOR DRIVE': pokemonDefenses[ELECTRIC] = 0; break;
+                case 'VOLT ABSORB': pokemonDefenses[ELECTRIC] = 0; break;
+                case 'SAP SIPPER': pokemonDefenses[GRASS] = 0; break;
+                case 'WONDER GUARD': pokemonDefenses.forEach((val, i, arr) => arr[i] = (arr[i] >= 2 ? arr[i] : 0))
+            }
             partyDefenses.push(pokemonDefenses);
         }
     }
     return partyDefenses;
+}
+
+const styleBox = (column, value) => {
+    const style = {};
+    // [WEAKNESSES, DOUBLE_WEAKNESS, RESISTS, DOUBLE_RESISTS, IMMUNE, NEUTRAL]
+    switch(column){
+        case 'DOUBLE_WEAKNESS':
+            style.backgroundColor = value > 3 ? '#990000' : value > 2 ? '#CC0000' : value > 1 ? '#FF3333' : value > 0 ? '#ff6666' : undefined;
+            break;
+        case 'WEAKNESSES':
+            style.backgroundColor = value > 3 ? '#CC0000' : value > 2 ? '#FF3333' : value > 1 ? '#FF6666' : value > 0 ? '#ff9999' : undefined;
+            break;
+        case 'RESISTS':
+                style.backgroundColor = value > 3 ? '#00CC00' : value > 2 ? '#33FF33' : value > 1 ? '#66FF66' : value > 0 ? '#99ff99' : undefined;
+                break;
+        case 'DOUBLE_RESISTS':
+                style.backgroundColor = value > 3 ? '#009900' : value > 2 ? '#00CC00' : value > 1 ? '#33FF33' : value > 0 ? '#66FF66' : undefined;
+                break;
+        case 'IMMUNE':
+            style.backgroundColor = value > 3 ? '#0066CC' : value > 2 ? '#0080FF' : value > 1 ? '#3399FF' : value > 0 ? '#66B2FF' : undefined;
+            break;
+    }
+    return style;
 }
 
 class App extends Component{
@@ -91,7 +127,9 @@ class App extends Component{
         return (
             <div className="App">
                 <form name="party" id="party">
-                    {this.state.partyMembers.map((idNum) => <div>
+                    {this.state.partyMembers.map((idNum) => <div key={'Pokemon'+idNum}>
+                        <h3>Pokemon {idNum}</h3>
+                        <input type="text" placeholder='Nickname' name={'PokemonName'+idNum} id={'PokemonName'+idNum}></input>
                         {typeSelector(idNum)}
                         {abilitySelector(idNum)}
                     </div>)}
@@ -117,7 +155,7 @@ class App extends Component{
                                     {this.state.partyMembers.map((pokemon) => {
                                         if($('#PokemonA' + pokemon).children("option:selected").val() != "--" ||
                                         $('#PokemonB' + pokemon).children("option:selected").val() != "--"){
-                                            return <th key={"Result"+pokemon}>Pokemon {pokemon}</th>
+                                            return <th key={"Result"+pokemon}>{$('#PokemonName' + pokemon).val()}</th>
                                         }
                                         else return null;
                                     })}
@@ -148,12 +186,12 @@ class App extends Component{
                                             return <td key={type+pokemon}>{'' + pokemon[typeIndex]}</td>
                                         })}
                                         <td className="resultsTallySpacer"></td>
-                                        <td>{DOUBLE_WEAKNESS}</td>
-                                        <td>{WEAKNESSES}</td>
+                                        <td style={styleBox('DOUBLE_WEAKNESS', DOUBLE_WEAKNESS)}>{DOUBLE_WEAKNESS}</td>
+                                        <td style={styleBox('WEAKNESSES', WEAKNESSES)}>{WEAKNESSES}</td>
                                         <td>{NEUTRAL}</td>
-                                        <td>{RESISTS}</td>
-                                        <td>{DOUBLE_RESISTS}</td>
-                                        <td>{IMMUNE}</td>
+                                        <td style={styleBox('RESISTS', RESISTS)}>{RESISTS}</td>
+                                        <td style={styleBox('DOUBLE_RESISTS', DOUBLE_RESISTS)}>{DOUBLE_RESISTS}</td>
+                                        <td style={styleBox('IMMUNE', IMMUNE)}>{IMMUNE}</td>
                                     </tr>}
                                 )}
                             </tbody>
